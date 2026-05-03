@@ -1,4 +1,4 @@
-# 🎓 EWS Pro — Hệ thống Phát hiện Sinh viên có Nguy cơ Bỏ học
+# 🎓 EWS Pro — Hệ thống Cảnh báo Sớm Sinh viên có Nguy cơ Bỏ học
 
 > **Đề tài Tốt nghiệp:** Xây dựng hệ thống cảnh báo sớm (Early Warning System) phát hiện sinh viên có nguy cơ bỏ học dựa trên phân tích hành vi học tập trên LMS Moodle, kết hợp Machine Learning và Trí tuệ nhân tạo Gemini AI.
 
@@ -6,27 +6,27 @@
 
 | Thành phần | Công nghệ |
 |---|---|
-| **Dữ liệu** | 200 SV × 60+ features × 4 tuần × 2 khóa học |
-| **ML Pipeline** | K-Means, DBSCAN, Agglomerative, Random Forest, Gradient Boosting |
+| **Dữ liệu** | 200 SV × 13 features × 4 tuần × 2 khóa học (8 nhóm hành vi G1–G8) |
 | **Backend** | Python Flask + MongoDB Atlas |
 | **AI** | Google Gemini API (tự soạn Email/SMS cảnh báo) |
 | **Frontend** | HTML/CSS/JS Dashboard (Chart.js) |
 | **Bot** | Playwright (mô phỏng hành vi SV trên Moodle) |
+| **Data Sync** | Google Sheets API + MongoDB Atlas |
 
 ## 🏗️ Kiến trúc hệ thống
 
 ```
-[Moodle LMS] → [AUTO_HOC_BAI.py] → [Google Sheets]
-                                         ↓
-                               [sync_sheet_to_mongo.py]
-                                         ↓
-                                   [MongoDB Atlas]
-                                         ↓
-[Google Sheets] → [Train_Model_Colab.py] → [student_risk_model.pkl]
-                                                    ↓
-                                            [api_server.py] ← Gemini AI
-                                                    ↓
-                                            [dashboard.html]
+┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
+│  data_pipeline.py │───>│  AUTO_HOC_BAI.py  │───>│  Moodle MySQL     │
+│  Sinh kịch bản    │    │  Bot Playwright   │    │  Log + Grades     │
+│  → JSON + Sheets  │    │  → Hành vi SV     │    │  → 49,000+ events │
+└──────────────────┘    └──────────────────┘    └──────────────────┘
+                                                         │
+┌──────────────────┐    ┌──────────────────┐             │
+│  dashboard.html   │    │ sync_*_to_mongo  │             │
+│  + api_server.py  │<───│  Sheets/JSON →   │<────────────┘
+│  ← Gemini AI      │    │  MongoDB Atlas   │
+└──────────────────┘    └──────────────────┘
 ```
 
 ## 🚀 Hướng dẫn Cài đặt
@@ -34,6 +34,7 @@
 ### 1. Cài đặt thư viện
 ```bash
 pip install -r requirements.txt
+playwright install chromium
 ```
 
 ### 2. Cấu hình biến môi trường
@@ -52,11 +53,13 @@ Tải Service Account Key từ Google Cloud Console, đặt vào thư mục gố
 
 | Bước | Lệnh | Mô tả |
 |------|-------|-------|
-| 1 | `python AUTO_HOC_BAI.py` | *(Tùy chọn)* Mô phỏng SV học trên Moodle |
-| 2 | `python sync_sheet_to_mongo.py` | Đồng bộ dữ liệu Google Sheets → MongoDB |
-| 3 | `python Train_Model_Colab.py` | Huấn luyện 5 thuật toán ML, xuất model `.pkl` |
+| 1 | `python data_pipeline.py` | Sinh dữ liệu mô phỏng → JSON + Google Sheets |
+| 2 | `python AUTO_HOC_BAI.py` | Bot mô phỏng hành vi SV trên Moodle |
+| 3 | `python sync_sheet_to_mongo.py` | Đồng bộ Google Sheets → MongoDB Atlas |
 | 4 | `python api_server.py` | Khởi chạy API Server tại `http://localhost:5000` |
 | 5 | Mở `dashboard.html` | Xem giao diện Dashboard trên trình duyệt |
+
+> 💡 **Demo mode:** `python AUTO_HOC_BAI.py --demo` — mở trình duyệt hiển thị để giáo viên quan sát Bot thao tác.
 
 ## 📁 Cấu trúc thư mục
 
@@ -64,29 +67,49 @@ Tải Service Account Key từ Google Cloud Console, đặt vào thư mục gố
 auto/
 ├── api_server.py              # Flask API Server (Backend chính)
 ├── AUTO_HOC_BAI.py            # Bot mô phỏng hành vi SV trên Moodle
-├── Train_Model_Colab.py       # Pipeline huấn luyện ML (5 thuật toán)
+├── data_pipeline.py           # Pipeline sinh dữ liệu mô phỏng (200 SV × 8 nhóm)
 ├── sync_sheet_to_mongo.py     # ETL: Google Sheets → MongoDB Atlas
+├── sync_json_to_mongo.py      # ETL: JSON file → MongoDB Atlas
 ├── generate_dashboard_data.py # Tạo JSON offline (fallback)
-├── etl_moodle_warehouse.py    # ETL: Moodle MySQL → SQLite Warehouse
+├── etl_moodle_warehouse.py    # ETL: Moodle MySQL → SQLite Warehouse (Production)
 ├── dashboard.html             # Giao diện Web Dashboard
+├── students_data.json         # Dữ liệu 400 records (200 SV × 2 khóa)
+├── moodle_config.json         # Cấu hình nhóm hành vi cho Bot
 ├── requirements.txt           # Danh sách thư viện Python
-├── credentials.json           # (Không đẩy lên Git) Google Service Account Key
+├── bot_modules/               # Modules Bot Playwright
+│   ├── bot_login.py           #   Xử lý đăng nhập/đăng xuất
+│   ├── bot_quiz.py            #   Làm bài quiz
+│   ├── bot_forum.py           #   Thảo luận forum
+│   └── bot_assign.py          #   Nộp bài tập
+├── static/                    # Frontend assets
+│   ├── css/dashboard.css      #   Stylesheet Dashboard
+│   └── js/dashboard.js        #   Logic Dashboard
+├── tests/                     # Unit tests
+│   └── test_ews.py            #   Test cases
+├── .github/workflows/         # CI/CD
+│   └── ci.yml                 #   GitHub Actions workflow
+├── credentials.json           # (Không đẩy lên Git) Google Service Account
 ├── .env                       # (Không đẩy lên Git) Biến môi trường bí mật
-└── student_risk_model.pkl     # (Tự sinh) Model ML đã train
+└── .gitignore                 # Danh sách file không track
 ```
 
-## 🔬 Phương pháp ML
+## 🔬 Dữ liệu & Phương pháp
 
-### Unsupervised Learning
-- **K-Means** (tìm K tối ưu bằng Silhouette Score)
-- **DBSCAN** (eps tự động từ K-NN Distance)
-- **Agglomerative Clustering**
+### 8 Nhóm hành vi sinh viên (G1–G8)
 
-### Supervised Learning
-- **Random Forest** (200 trees, max_depth=10)
-- **Gradient Boosting** (200 estimators, lr=0.1)
+| Nhóm | Tên | Cơ sở khoa học | Đặc trưng |
+|------|-----|----------------|-----------|
+| G1 | Chăm chỉ toàn diện | Kizilcec (2013) — Completing | Login cao, điểm cao |
+| G2 | Trì hoãn tích cực | You (2016) — Active Procrastination | Nộp sát deadline, điểm khá |
+| G3 | Gian lận | Baker (2004) — Gaming the System | Điểm cao, session ngắn |
+| G4 | Yếu — ít đăng nhập | Kizilcec (2013) — Sampling | Login 0–3 |
+| G5 | Yếu — không đọc TL | Kizilcec (2013) — Auditing | document_reads = 0 |
+| G6 | Thụ động — không thảo luận | Romero (2013) — Passive Lurkers | discussion = 0 |
+| G7 | Bỏ cuộc giữa chừng | Kizilcec (2013) — Disengaging | Giảm dần theo tuần |
+| G8 | Gián đoạn do ngoại cảnh | Quan sát thực tế | V-shape tuần 3 |
 
-> ⚠️ **Chống Data Leakage:** Các cột `weekly_score` được loại bỏ khỏi tập features supervised vì nhãn Risk được tạo từ chính `total_weekly_score`.
+### 13 Features hành vi (mỗi tuần)
+`login_count`, `active_days`, `session_duration`, `video_views`, `document_reads`, `discussion`, `total_assignments`, `assignment_attempt`, `assignment_duration_mins`, `weekly_score`, `ontime_margin`, `days_since_last_login`, `deadline_proximity`
 
 ## 👨‍💻 Tác giả
 
@@ -94,43 +117,29 @@ auto/
 
 ---
 
-## 🏭 Hướng dẫn Triển khai Thực tế (Production Deployment)
+## 🏭 Hướng dẫn Triển khai Thực tế (Production)
 
-*Phần này hướng dẫn cách chuyển đổi từ môi trường Data Mô phỏng (Synthetic) sang chạy thực tế trên Moodle của Trường học.*
+*Chuyển đổi từ Data Mô phỏng sang chạy thực tế trên Moodle của trường.*
 
-### Bước 1: Thay đổi Nguồn Dữ liệu (Data Source)
-Khi chạy thực tế, không cần Bot (`AUTO_HOC_BAI.py`) nữa. Bạn cần kết nối thẳng vào Database thực của Moodle.
-1. Mở file `api_server.py`.
-2. Sửa chuỗi kết nối Database để trỏ vào MySQL/PostgreSQL của Moodle trường:
-   ```python
-   # Ví dụ:
-   app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://db_user:db_pass@IP_MOODLE/moodle_db'
-   ```
-
-### Bước 2: Thay đổi Pipeline Trích xuất (ETL)
-Thay vì đọc file `students_data.json` mô phỏng, bạn sẽ dùng các câu lệnh SQL để rút trích Log thực tế:
-1. Mở file `data_pipeline.py` (hoặc `etl_moodle_warehouse.py`).
-2. Viết câu SQL Query vào các bảng sau của Moodle:
-   - **Đăng nhập & Tương tác:** `mdl_logstore_standard_log` (Đếm số lần view trang, xem video).
-   - **Điểm số:** `mdl_grade_grades` và `mdl_quiz_grades`.
-   - **Bài tập:** `mdl_assign_submission`.
-
-### Bước 3: Lên lịch Tự động hóa (Cron Job)
-Không chạy lệnh bằng tay. Hãy cấu hình một Cron Job trên máy chủ Linux để chạy Pipeline mỗi đêm:
-```bash
-# Mở crontab
-crontab -e
-
-# Thêm dòng sau để tự động lấy data Moodle và đồng bộ vào MongoDB lúc 01:00 sáng mỗi ngày:
-0 1 * * * /usr/bin/python3 /path/to/sync_sheet_to_mongo.py
+### Bước 1: Thay đổi Nguồn Dữ liệu
+Kết nối `etl_moodle_warehouse.py` trực tiếp vào MySQL của Moodle:
+```python
+# Truy vấn SQL vào các bảng Moodle:
+# - mdl_logstore_standard_log (login, view, submit events)
+# - mdl_grade_grades (điểm quiz + assign)
+# - mdl_assign_submission (bài nộp)
 ```
 
-### Bước 4: Tích hợp Frontend (LMS Plugin)
-Thay vì dùng Dashboard rời (`dashboard.html`), code Frontend này có thể được đóng gói thành một **Moodle Block Plugin (PHP/JS)**. 
-Giáo viên chỉ cần cài Plugin này vào Moodle, Block sẽ gọi API (`http://your_api_server/api/get_students`) và hiển thị trực tiếp đồ thị cảnh báo trên màn hình Moodle của giáo viên.
+### Bước 2: Lên lịch Tự động (Cron Job)
+```bash
+# Tự động ETL mỗi đêm lúc 01:00
+0 1 * * * /usr/bin/python3 /path/to/etl_moodle_warehouse.py
+```
 
-### 🗑️ Các file cần xóa khi lên Production:
-Khi đã gắn Moodle thật, toàn bộ bộ công cụ Sinh data mô phỏng sẽ bị loại bỏ:
-- Xóa `AUTO_HOC_BAI.py`.
-- Xóa toàn bộ thư mục `bot_modules/`.
-- Xóa `moodle_config.json`.
+### Bước 3: Tích hợp Frontend
+Đóng gói Dashboard thành **Moodle Block Plugin** (PHP/JS) — giáo viên xem trực tiếp trên Moodle.
+
+### 🗑️ Các file loại bỏ khi lên Production
+- `AUTO_HOC_BAI.py`, `bot_modules/` — Bot mô phỏng
+- `data_pipeline.py` — Script sinh data
+- `moodle_config.json` — Cấu hình Bot
