@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EWS Pro — Hệ thống Cảnh báo Học vụ AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo"><div class="icon">🎓</div></div>
+    <h2>EWS Pro</h2>
+    <p class="login-sub">Hệ thống Cảnh báo Học vụ AI — Đăng nhập để tiếp tục</p>
+    <div class="login-field"><label>Tên đăng nhập</label><input type="text" id="loginUser" placeholder="admin" autofocus></div>
+    <div class="login-field"><label>Mật khẩu</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" onclick="doLogin()">🔐 Đăng nhập</button>
+    <p class="login-error" id="loginError">❌ Sai tên đăng nhập hoặc mật khẩu!</p>
+  </div>
+</div>
+
+<aside class="sidebar" style="display:none" id="sidebarEl">
+  <div class="logo"><div class="logo-icon">🎓</div><div class="logo-text">EWS Pro<span>Cảnh báo Học vụ AI</span></div></div>
+  <nav>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="icon">🏠</span> Tổng quan</div>
+    <div class="nav-item" onclick="showPage('courses',this)"><span class="icon">📚</span> Khóa học</div>
+    <div class="nav-item" onclick="showPage('students',this)"><span class="icon">👥</span> Danh sách SV <span class="badge" id="riskBadge">0</span></div>
+    <div class="nav-item" onclick="showPage('reports',this)"><span class="icon">📊</span> Báo cáo</div>
+    <div class="nav-item" onclick="showPage('settings',this)"><span class="icon">⚙️</span> Cài đặt</div>
+  </nav>
+  <div class="logout" onclick="doLogout()">🚪 Đăng xuất</div>
+</aside>
+
+<div class="main" style="display:none" id="mainEl">
+  <header class="header">
+    <div><h1 id="pageTitle">📋 Tổng quan tình hình học tập</h1><div class="breadcrumb" id="breadcrumb"></div></div>
+    <div class="header-right">
+      <select id="globalClassFilter" onchange="applyGlobalFilter()" style="margin-right:12px; padding:6px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; background:var(--card-bg); color:var(--text); font-family:inherit;">
+        <option value="all">🌍 Tất cả các Lớp</option>
+      </select>
+      <div class="search-box">🔍 <input type="text" placeholder="Tìm SV..." id="globalSearch" oninput="globalSearchHandler()"></div>
+      <div class="notif-wrapper">
+        <div class="notif-bell" onclick="toggleNotif()">🔔<div class="dot"></div></div>
+        <div class="notif-dropdown" id="notifDropdown"><h4>🚨 Cảnh báo mới</h4><div id="notifList"></div></div>
+      </div>
+      <div class="dark-toggle" onclick="toggleDark()" title="Chế độ tối">🌙</div>
+      <div class="user-info">
+        <div class="user-avatar">NA</div>
+        <div class="user-name"><strong>Thầy Nguyễn Văn A</strong><span>Cố vấn học tập</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <div class="content page active" id="page-dashboard">
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="charts-row">
+      <div class="chart-card"><h3><span class="dot" style="background:var(--red)"></span> Xu hướng rủi ro 4 tuần</h3><canvas id="lineChart" height="100"></canvas></div>
+      <div class="chart-card"><h3><span class="dot" style="background:var(--blue)"></span> Phân bổ mức rủi ro</h3><canvas id="donutChart" height="100"></canvas></div>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <h3>🚨 Top sinh viên nguy cơ cao</h3>
+        <div class="filter-group">
+          <button class="filter-btn active" onclick="filterTable('all',this)">Tất cả</button>
+          <button class="filter-btn" onclick="filterTable('red',this)">🔴 Đỏ</button>
+          <button class="filter-btn" onclick="filterTable('yellow',this)">🟡 Vàng</button>
+          <button class="filter-btn" onclick="filterTable('green',this)">🟢 Xanh</button>
+          <select id="handledFilter" onchange="renderRiskTable(document.querySelector('.filter-btn.active').textContent.includes('Đỏ')?'red':document.querySelector('.filter-btn.active').textContent.includes('Vàng')?'yellow':document.querySelector('.filter-btn.active').textContent.includes('Xanh')?'green':'all')" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--card-bg);color:var(--text);font-family:inherit">
+            <option value="all">📋 Tất cả trạng thái</option>
+            <option value="pending">⏳ Chưa xử lý</option>
+            <option value="done">✅ Đã xử lý</option>
+          </select>
+        </div>
+      </div>
+      <div style="padding:8px 24px;display:flex;gap:8px;border-bottom:1px solid var(--border)">
+        <button class="btn-primary" style="padding:6px 14px;font-size:12px" onclick="bulkEmail()">✉️ Gửi Email hàng loạt</button>
+        <button class="btn-primary" style="padding:6px 14px;font-size:12px;background:var(--green)" onclick="bulkSMS()">📱 Gửi SMS hàng loạt</button>
+        <span style="font-size:11px;color:var(--text-muted);align-self:center" id="selectedCount">Chọn SV bằng checkbox bên dưới</span>
+      </div>
+      <table><thead><tr>
+        <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+        <th onclick="sortTable('mssv')">Mã SV ↕</th><th onclick="sortTable('name')">Tên ↕</th><th>Lớp</th>
+        <th onclick="sortTable('riskPct')">Rủi ro ↕</th><th>Mức</th><th>Vấn đề</th><th>Thao tác</th>
+      </tr></thead><tbody id="riskTableBody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- COURSES -->
+  <div class="content page" id="page-courses">
+    <h2 style="margin-bottom:20px;font-size:18px">📚 Chọn khóa học để xem chi tiết</h2>
+    <div class="course-grid" id="courseGrid"></div>
+    <div id="courseStudents" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 id="courseTitle" style="font-size:16px">—</h3>
+        <button type="button" class="btn-secondary" onclick="closeCourseStudents()">← Quay lại</button>
+      </div>
+      <div class="table-card">
+        <table><thead><tr><th>Mã SV</th><th>Tên</th><th>Rủi ro</th><th>Điểm</th><th>Mức</th><th>Thao tác</th></tr></thead>
+        <tbody id="courseStudentBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div class="content page" id="page-students">
+    <div class="student-search">
+      <input type="text" placeholder="🔍 Tìm MSSV hoặc tên..." id="studentSearchInput" oninput="renderStudentList()">
+      <select id="studentFilterLevel" onchange="renderStudentList()"><option value="all">Tất cả mức</option><option value="red">🔴 Nguy hiểm</option><option value="yellow">🟡 Cảnh báo</option><option value="green">🟢 An toàn</option></select>
+      <select id="studentFilterCourse" onchange="renderStudentList()"><option value="all">Tất cả khóa học</option></select>
+      <select id="studentFilterClass" onchange="renderStudentList()"><option value="all">Tất cả lớp</option></select>
+      <button class="btn-primary" style="padding:8px 16px;font-size:12px;white-space:nowrap" onclick="exportStudentCSV()">📥 Xuất CSV</button>
+    </div>
+    <div class="table-card">
+      <table><thead><tr><th>Mã SV</th><th>Tên</th><th>Lớp</th><th>Khóa học</th><th>Rủi ro</th><th>Điểm</th><th>Mức</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+      <tbody id="studentListBody"></tbody></table>
+      <div class="pagination" id="studentPagination"></div>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="content page" id="page-reports">
+    <div class="chart-card" style="margin-bottom:20px">
+      <h3>📊 Báo cáo tổng hợp</h3>
+      <p style="color:var(--text-muted);margin-bottom:16px">Xuất dữ liệu báo cáo cho Giảng viên / Giáo vụ.</p>
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <button class="btn-primary" onclick="exportCSV()">📥 Xuất CSV toàn bộ</button>
+        <button class="btn-primary" style="background:var(--green)" onclick="exportHandledCSV()">📥 CSV đã xử lý</button>
+        <button class="btn-primary" style="background:var(--purple)" onclick="window.print()">🖨️ In / Xuất PDF</button>
+      </div>
+      <!-- Summary Table -->
+      <h4 style="margin-bottom:12px">📋 Bảng tổng hợp theo Lớp học</h4>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--bg)"><th style="padding:10px 12px;text-align:left">Lớp học</th><th>Tổng SV</th><th style="color:#10b981">An toàn</th><th style="color:#f59e0b">Cảnh báo</th><th style="color:#ef4444">Nguy hiểm</th><th>Đã xử lý</th><th>Chưa xử lý</th></tr></thead>
+        <tbody id="reportSummaryBody"></tbody>
+      </table>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><h3>📈 Điểm TB theo Cluster</h3><canvas id="reportBarChart" height="120"></canvas></div>
+      <div class="chart-card"><h3>📊 Login TB theo tuần</h3><canvas id="reportLoginChart" height="120"></canvas></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="content page" id="page-settings">
+    <div class="chart-card" style="margin-bottom:20px">
+      <h3>⚙️ Cài đặt ngưỡng cảnh báo</h3>
+      <div style="margin:20px 0"><label style="font-weight:600;font-size:14px">🔴 Ngưỡng Đỏ: <span id="redThreshVal">70</span>%</label><br><input type="range" min="50" max="100" value="70" id="redThreshold" oninput="updateThresholds()" style="width:300px;margin:8px 0"></div>
+      <div style="margin:20px 0"><label style="font-weight:600;font-size:14px">🟡 Ngưỡng Vàng: <span id="yellowThreshVal">40</span>%</label><br><input type="range" min="20" max="70" value="40" id="yellowThreshold" oninput="updateThresholds()" style="width:300px;margin:8px 0"></div>
+      <p style="color:var(--text-muted);margin-top:12px">Rủi ro &gt; <b id="rTS">70</b>% → 🔴 | <b id="yTS">40</b>% – <b id="rTS2">70</b>% → 🟡 | &lt; <b id="yTS2">40</b>% → 🟢</p>
+    </div>
+    <div class="chart-card" style="margin-bottom:20px">
+      <h3>👤 Thông tin Cố vấn học tập</h3>
+      <div class="input-row" style="margin:12px 0"><label>Họ tên:</label><input type="text" id="settingAdvisorName" value="Thầy Nguyễn Văn A" onchange="updateAdvisorInfo()"></div>
+      <div class="input-row" style="margin:12px 0"><label>Email gửi:</label><input type="text" id="settingAdvisorEmail" value="advisor@university.edu.vn" onchange="updateAdvisorInfo()"></div>
+      <div class="input-row" style="margin:12px 0"><label>Chức vụ:</label><input type="text" id="settingAdvisorRole" value="Cố vấn học tập" onchange="updateAdvisorInfo()"></div>
+      <p style="color:var(--text-muted);font-size:12px;margin-top:8px">Thông tin này sẽ hiển thị trên Header và trong nội dung Email gửi đi.</p>
+    </div>
+    <div class="chart-card">
+      <h3>🔗 Kết nối API</h3>
+      <div class="input-row" style="margin:12px 0"><label>Backend:</label><input type="text" id="settingAPIUrl" value="http://localhost:5000" disabled style="background:transparent"></div>
+      <p style="color:var(--text-muted);font-size:12px;margin-top:8px">Cấu hình API Key trong file <code>.env</code> trên server. Trạng thái: <span id="apiStatus" style="color:var(--green);font-weight:600">Đang kiểm tra...</span></p>
+      <button class="btn-primary" style="margin-top:8px;padding:6px 14px;font-size:12px" onclick="checkAPIStatus()">🔄 Kiểm tra kết nối</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-avatar" id="modalAvatar">SV</div>
+      <div class="modal-info"><h2 id="modalName">—</h2><p id="modalMSSV">MSSV: —</p><p id="modalEmail">Email: —</p><p id="modalCourse" style="font-weight:600;color:var(--blue)"></p><div class="modal-status" id="modalStatus">—</div></div>
+    </div>
+    <div class="modal-body">
+      <div class="modal-charts">
+        <div class="modal-chart-box"><h4>🕸️ So sánh với TB lớp</h4><canvas id="radarChart"></canvas></div>
+        <div class="modal-chart-box"><h4>📈 Điểm qua 4 tuần</h4><canvas id="weeklyChart"></canvas></div>
+      </div>
+      <!-- XAI: EXPLAINABLE AI SECTION -->
+      <div class="xai-section" id="xaiSection">
+        <h4>💡 AI Giải thích Nguy cơ <span class="xai-badge">SHAP Explainability</span></h4>
+        <p class="xai-desc">Phân tích top yếu tố ảnh hưởng lớn nhất đến dự đoán nguy cơ của sinh viên này:</p>
+        <div id="xaiFactors" class="xai-factors">
+          <p style="font-size:12px;color:var(--text-muted);padding:8px">⏳ Đang phân tích...</p>
+        </div>
+      </div>
+      <div class="modal-email">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h4>✉️ Cảnh báo tới Sinh viên</h4>
+          <button class="ai-btn" onclick="generateAIContent()">✨ Soạn bằng AI (Gemini)</button>
+        </div>
+        <div class="comm-tabs">
+          <div class="comm-tab active" onclick="switchCommTab('email',this)">📧 Email</div>
+          <div class="comm-tab" onclick="switchCommTab('sms',this)">📱 SMS</div>
+        </div>
+        
+        <!-- EMAIL PANEL -->
+        <div class="comm-panel active" id="comm-email">
+          <div class="input-row"><label>Người nhận:</label><input type="text" id="emailTo" placeholder="email@student.edu.vn"></div>
+          <div class="input-row"><label>Tiêu đề:</label><input type="text" id="emailSubject" value="[EWS] Cảnh báo tình hình học tập"></div>
+          <textarea id="emailContent" placeholder="Nội dung Email..." style="height:120px"></textarea>
+          <div style="text-align:right"><button class="btn-primary" onclick="sendCommunication('email')">Gửi Email</button></div>
+        </div>
+
+        <!-- SMS PANEL -->
+        <div class="comm-panel" id="comm-sms">
+          <div class="input-row"><label>Số ĐT:</label><input type="text" id="smsTo" value="0901234567" placeholder="Số điện thoại sinh viên/PH"></div>
+          <textarea id="smsContent" placeholder="Nội dung SMS (không dấu, ngắn gọn)..." style="height:80px"></textarea>
+          <div style="text-align:right"><button class="btn-primary" style="background:var(--green)" onclick="sendCommunication('sms')">Gửi SMS</button></div>
+        </div>
+      </div>
+      <!-- NOTES SECTION -->
+      <div class="notes-section">
+        <h4>📝 Ghi chú & Lịch sử can thiệp</h4>
+        <div class="note-input-row">
+          <select class="note-type-select" id="noteType">
+            <option value="note">📝 Ghi chú</option>
+            <option value="call">📞 Gọi điện</option>
+            <option value="email">✉️ Đã gửi email</option>
+            <option value="meeting">🤝 Gặp mặt</option>
+          </select>
+          <input type="text" id="noteInput" placeholder="Nhập ghi chú..." onkeydown="if(event.key==='Enter')addNote()">
+          <button class="btn-primary" onclick="addNote()" style="padding:8px 16px">💾 Lưu</button>
+        </div>
+        <div class="notes-list" id="notesList"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="document.getElementById('modalBackdrop').classList.remove('show')">✕ Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/dashboard.js"></script>
+</body>
+</html>

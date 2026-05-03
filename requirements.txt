@@ -1,0 +1,20 @@
+# === EWS Pro - Production Dependencies ===
+flask
+flask-cors
+python-dotenv
+google-generativeai
+requests
+pymongo
+pandas
+numpy
+scikit-learn
+joblib
+gspread
+oauth2client
+playwright
+mysql-connector-python
+bcrypt
+beautifulsoup4
+shap
+apscheduler
+google-genai

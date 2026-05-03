@@ -1,0 +1,35 @@
+# === EWS Pro - Ignore Files ===
+
+# Thông tin bí mật
+.env
+credentials.json
+
+# Binary files
+*.docx
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Model pkl (file nặng, tự tạo lại bằng Train script)
+*.pkl
+
+# Log files
+bot_log_final.txt
+logs/
+
+# Credentials
+acc.txt
+
+# Data Warehouse local
+moodle_warehouse.db
+
+# VS Code settings
+.vscode/
+
+# Dev archive (internal tools)
+.dev_archive/
+
+# OS files
+Thumbs.db
+.DS_Store

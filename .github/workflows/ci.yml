@@ -1,0 +1,59 @@
+name: EWS Pro CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: 🧪 Run Tests & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest flake8
+
+    - name: 🔍 Lint with flake8 (PEP8)
+      run: |
+        # Lỗi nghiêm trọng (syntax errors, undefined names)
+        flake8 api_server.py sync_sheet_to_mongo.py generate_dashboard_data.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Cảnh báo (độ phức tạp, dòng dài) - chỉ báo warning
+        flake8 api_server.py --count --max-complexity=15 --max-line-length=200 --statistics --exit-zero
+
+    - name: ✅ Run unit tests
+      env:
+        MONGO_URI: ""
+        GEMINI_API_KEY: ""
+        GMAIL_APP_PASSWORD: "your_app_password"
+      run: |
+        python -m pytest tests/ -v --tb=short
+
+  security:
+    name: 🔐 Security Check
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔍 Check for leaked secrets
+      run: |
+        # Kiểm tra không có API key hoặc password hardcode trong code
+        echo "Checking for potential secret leaks..."
+        ! grep -r "GMAIL_APP_PASSWORD.*=.*['\"].*[a-zA-Z]" --include="*.py" . || echo "⚠️ Warning: Possible hardcoded password found"
+        ! grep -r "GEMINI_API_KEY.*=.*['\"]AIza" --include="*.py" . || echo "⚠️ Warning: Possible hardcoded API key found"
+        echo "✅ Security check complete"
