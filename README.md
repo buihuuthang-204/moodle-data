@@ -11,7 +11,7 @@
 | **Backend** | Python Flask + MongoDB Atlas |
 | **AI** | Google Gemini API (tự soạn Email/SMS cảnh báo) |
 | **Frontend** | HTML/CSS/JS Dashboard (Chart.js) |
-| **Bot** | Playwright (giả lập hành vi SV trên Moodle) |
+| **Bot** | Playwright (mô phỏng hành vi SV trên Moodle) |
 
 ## 🏗️ Kiến trúc hệ thống
 
@@ -52,7 +52,7 @@ Tải Service Account Key từ Google Cloud Console, đặt vào thư mục gố
 
 | Bước | Lệnh | Mô tả |
 |------|-------|-------|
-| 1 | `python AUTO_HOC_BAI.py` | *(Tùy chọn)* Giả lập SV học trên Moodle |
+| 1 | `python AUTO_HOC_BAI.py` | *(Tùy chọn)* Mô phỏng SV học trên Moodle |
 | 2 | `python sync_sheet_to_mongo.py` | Đồng bộ dữ liệu Google Sheets → MongoDB |
 | 3 | `python Train_Model_Colab.py` | Huấn luyện 5 thuật toán ML, xuất model `.pkl` |
 | 4 | `python api_server.py` | Khởi chạy API Server tại `http://localhost:5000` |
@@ -63,7 +63,7 @@ Tải Service Account Key từ Google Cloud Console, đặt vào thư mục gố
 ```
 auto/
 ├── api_server.py              # Flask API Server (Backend chính)
-├── AUTO_HOC_BAI.py            # Bot giả lập hành vi SV trên Moodle
+├── AUTO_HOC_BAI.py            # Bot mô phỏng hành vi SV trên Moodle
 ├── Train_Model_Colab.py       # Pipeline huấn luyện ML (5 thuật toán)
 ├── sync_sheet_to_mongo.py     # ETL: Google Sheets → MongoDB Atlas
 ├── generate_dashboard_data.py # Tạo JSON offline (fallback)
@@ -99,7 +99,7 @@ auto/
 *Phần này hướng dẫn cách chuyển đổi từ môi trường Data Mô phỏng (Synthetic) sang chạy thực tế trên Moodle của Trường học.*
 
 ### Bước 1: Thay đổi Nguồn Dữ liệu (Data Source)
-Khi chạy thực tế, không dùng Bot (`AUTO_HOC_BAI.py`) để giả lập nữa. Bạn cần kết nối thẳng vào Database thực của Moodle.
+Khi chạy thực tế, không cần Bot (`AUTO_HOC_BAI.py`) nữa. Bạn cần kết nối thẳng vào Database thực của Moodle.
 1. Mở file `api_server.py`.
 2. Sửa chuỗi kết nối Database để trỏ vào MySQL/PostgreSQL của Moodle trường:
    ```python
@@ -108,7 +108,7 @@ Khi chạy thực tế, không dùng Bot (`AUTO_HOC_BAI.py`) để giả lập n
    ```
 
 ### Bước 2: Thay đổi Pipeline Trích xuất (ETL)
-Thay vì đọc file `students_data.json` giả lập, bạn sẽ dùng các câu lệnh SQL để rút trích Log thực tế:
+Thay vì đọc file `students_data.json` mô phỏng, bạn sẽ dùng các câu lệnh SQL để rút trích Log thực tế:
 1. Mở file `data_pipeline.py` (hoặc `etl_moodle_warehouse.py`).
 2. Viết câu SQL Query vào các bảng sau của Moodle:
    - **Đăng nhập & Tương tác:** `mdl_logstore_standard_log` (Đếm số lần view trang, xem video).
