@@ -9,7 +9,6 @@
 | **Dữ liệu** | 200 SV × 13 features × 4 tuần × 2 khóa học (8 nhóm hành vi G1–G8) |
 | **Backend** | Python Flask + MongoDB Atlas |
 | **AI** | Google Gemini API (tự soạn Email/SMS cảnh báo) |
-| **Frontend** | HTML/CSS/JS Dashboard (Chart.js) |
 | **Bot** | Playwright (mô phỏng hành vi SV trên Moodle) |
 | **Data Sync** | Google Sheets API + MongoDB Atlas |
 
@@ -23,8 +22,8 @@
 └──────────────────┘    └──────────────────┘    └──────────────────┘
                                                          │
 ┌──────────────────┐    ┌──────────────────┐             │
-│  dashboard.html   │    │ sync_*_to_mongo  │             │
-│  + api_server.py  │<───│  Sheets/JSON →   │<────────────┘
+│  api_server.py    │    │ sync_*_to_mongo  │             │
+│  Flask API        │<───│  Sheets/JSON →   │<────────────┘
 │  ← Gemini AI      │    │  MongoDB Atlas   │
 └──────────────────┘    └──────────────────┘
 ```
@@ -57,7 +56,6 @@ Tải Service Account Key từ Google Cloud Console, đặt vào thư mục gố
 | 2 | `python AUTO_HOC_BAI.py` | Bot mô phỏng hành vi SV trên Moodle |
 | 3 | `python sync_sheet_to_mongo.py` | Đồng bộ Google Sheets → MongoDB Atlas |
 | 4 | `python api_server.py` | Khởi chạy API Server tại `http://localhost:5000` |
-| 5 | Mở `dashboard.html` | Xem giao diện Dashboard trên trình duyệt |
 
 > 💡 **Demo mode:** `python AUTO_HOC_BAI.py --demo` — mở trình duyệt hiển thị để giáo viên quan sát Bot thao tác.
 
@@ -70,9 +68,7 @@ auto/
 ├── data_pipeline.py           # Pipeline sinh dữ liệu mô phỏng (200 SV × 8 nhóm)
 ├── sync_sheet_to_mongo.py     # ETL: Google Sheets → MongoDB Atlas
 ├── sync_json_to_mongo.py      # ETL: JSON file → MongoDB Atlas
-├── generate_dashboard_data.py # Tạo JSON offline (fallback)
 ├── etl_moodle_warehouse.py    # ETL: Moodle MySQL → SQLite Warehouse (Production)
-├── dashboard.html             # Giao diện Web Dashboard
 ├── students_data.json         # Dữ liệu 400 records (200 SV × 2 khóa)
 ├── moodle_config.json         # Cấu hình nhóm hành vi cho Bot
 ├── requirements.txt           # Danh sách thư viện Python
@@ -81,9 +77,6 @@ auto/
 │   ├── bot_quiz.py            #   Làm bài quiz
 │   ├── bot_forum.py           #   Thảo luận forum
 │   └── bot_assign.py          #   Nộp bài tập
-├── static/                    # Frontend assets
-│   ├── css/dashboard.css      #   Stylesheet Dashboard
-│   └── js/dashboard.js        #   Logic Dashboard
 ├── tests/                     # Unit tests
 │   └── test_ews.py            #   Test cases
 ├── .github/workflows/         # CI/CD
@@ -137,7 +130,7 @@ Kết nối `etl_moodle_warehouse.py` trực tiếp vào MySQL của Moodle:
 ```
 
 ### Bước 3: Tích hợp Frontend
-Đóng gói Dashboard thành **Moodle Block Plugin** (PHP/JS) — giáo viên xem trực tiếp trên Moodle.
+Phát triển giao diện Dashboard riêng hoặc đóng gói thành **Moodle Block Plugin** (PHP/JS) để giáo viên xem trực tiếp trên Moodle.
 
 ### 🗑️ Các file loại bỏ khi lên Production
 - `AUTO_HOC_BAI.py`, `bot_modules/` — Bot mô phỏng
